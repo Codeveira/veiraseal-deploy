@@ -1,9 +1,12 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help init up down restart logs ps build-image backup upgrade clean
+.PHONY: help check init up down restart logs ps build-image backup upgrade clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*## "}{printf "  %-14s %s\n", $$1, $$2}'
+
+check: ## Validate scripts + docker-compose.yml (no Docker daemon needed to run, only the CLI)
+	./check.sh
 
 init: ## Create the vault (run once; prints the recovery key — save it offline)
 	mkdir -p data backup

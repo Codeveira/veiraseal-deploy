@@ -14,6 +14,10 @@ unlock the paid Veira Seal tiers at no extra cost; see the main
   one-time recovery key. Losing both means the vault's data cannot be
   recovered — there is no backdoor, by design.
 
+Before changing anything here, `make check` (or `./check.sh`) validates
+`backup.sh`/`upgrade.sh` syntax and `docker-compose.yml` — no Docker
+daemon required, just the CLI.
+
 ## Quick start
 
 ```sh
