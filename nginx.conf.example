@@ -1,0 +1,56 @@
+# Example reverse proxy for Veira Seal. Copy, edit the server_name and
+# certificate paths, and drop into /etc/nginx/sites-available/ (or your
+# equivalent). TLS termination happens here; the container itself only
+# ever speaks plain HTTP on 127.0.0.1:8200 (see docker-compose.yml, which
+# binds the port to loopback for exactly this reason).
+#
+# If you use this file, also set VEIRA_TRUST_PROXY=1 in .env so the audit
+# log and rate limiter read the real client IP from X-Forwarded-For
+# instead of nginx's own address — only safe because nginx is now the sole
+# path to the container.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name vault.example.com;
+
+    # ACME HTTP-01 challenge, if you use certbot/acme.sh.
+    location /.well-known/acme-challenge/ {
+        root /var/www/acme;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name vault.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/vault.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/vault.example.com/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    # Secrets responses are small JSON; nothing here needs large buffers,
+    # but keep bodies capped in line with Veira Seal's own 256KiB value cap.
+    client_max_body_size 1m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8200;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        # Required for VEIRA_TRUST_PROXY=1 to record real client IPs in the
+        # audit log and apply per-client rate limiting correctly.
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Machine-token pulls in CI can be slow-ish over the public
+        # internet; keep the proxy's own timeouts generous.
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    60s;
+    }
+}

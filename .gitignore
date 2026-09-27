@@ -1,0 +1,9 @@
+# Real secrets/config — keep .env.example tracked, never the real one
+.env
+
+# Bind-mounted vault data — the master key and database live here
+/data/
+
+# Backup snapshots — timestamped dumps, not meant to be committed
+/backup/*
+!/backup/.gitkeep

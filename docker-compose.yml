@@ -1,0 +1,46 @@
+# Veira Seal — production-shaped Compose file.
+#
+# Quick start:
+#   cp .env.example .env            # edit VEIRA_ADMIN_PASSWORD
+#   docker compose run --rm veira-init
+#   docker compose up -d veira
+#
+# See README.md for the full walkthrough, backup.sh/upgrade.sh, and putting
+# a TLS-terminating reverse proxy in front (nginx.conf.example).
+
+services:
+  # One-shot: creates the vault and prints the recovery key. Run once, then
+  # never again for this data volume — re-running after init is a no-op
+  # error (init refuses to overwrite an existing vault).
+  veira-init:
+    image: veiraseal/veira:${IMAGE_TAG:-latest}
+    build: ../veiraseal
+    profiles: ["init"]
+    environment:
+      VEIRA_ADMIN_PASSWORD: ${VEIRA_ADMIN_PASSWORD}
+    volumes:
+      - ./data:/data
+    entrypoint: ["/veira"]
+    command: ["server", "init", "-db", "/data/veira.db", "-keyfile", "/data/veira.key", "-admin", "admin"]
+
+  veira:
+    image: veiraseal/veira:${IMAGE_TAG:-latest}
+    build: ../veiraseal
+    restart: unless-stopped
+    environment:
+      VEIRA_DB: /data/veira.db
+      VEIRA_KEYFILE: /data/veira.key
+      VEIRA_LISTEN_ADDR: ${VEIRA_LISTEN_ADDR:-0.0.0.0:8200}
+      VEIRA_TRUST_PROXY: ${VEIRA_TRUST_PROXY:-}
+    volumes:
+      - ./data:/data
+    # Bind to loopback only when a reverse proxy (nginx.conf.example) is
+    # doing TLS termination in front; expose "8200:8200" directly otherwise.
+    ports:
+      - "127.0.0.1:8200:8200"
+    # The image already declares its own HEALTHCHECK (CMD /veira healthcheck)
+    # against http://127.0.0.1:8200/health; nothing to override here.
+    depends_on:
+      veira-init:
+        condition: service_completed_successfully
+        required: false
