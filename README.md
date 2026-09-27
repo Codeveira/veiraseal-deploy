@@ -93,6 +93,30 @@ recovery key, via `veira server backup`'s companion `UnsealWithRecovery`
 path documented in the main README) still in place. Backups are encrypted
 ciphertext-only — a stolen backup file is useless without the key.
 
+## Monitoring (optional)
+
+A ready-made Prometheus + Grafana stack, merged on top of the base compose
+file:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+One-time setup: set `GRAFANA_ADMIN_PASSWORD` in `.env`, and make sure your
+licence is Extended tier or higher — `/metrics` is a paid feature (see
+`../veiraseal/docs/api.md`'s Metrics section); on Free/Standard the scrape
+just gets a `403` and every panel stays empty.
+
+Grafana comes up at `:3001` (`admin` / `GRAFANA_ADMIN_PASSWORD`) with the
+**Veira Seal — Overview** dashboard already provisioned — no manual
+datasource or import step. It covers vault seal state, user/project counts,
+licence info, and HTTP request/auth-failure/rate-limit rates. Prometheus
+itself is exposed at `:9090` for ad-hoc queries.
+
+Unlike a typical scraped app, no token or credential file is needed:
+`/metrics` is gated by the licence check alone, so the plain
+`monitoring/prometheus.yml` scrape config just works.
+
 ## Security notes
 
 - Never put `VEIRA_ADMIN_PASSWORD`, the master key, or the recovery key

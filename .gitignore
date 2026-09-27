@@ -7,3 +7,7 @@
 # Backup snapshots — timestamped dumps, not meant to be committed
 /backup/*
 !/backup/.gitkeep
+
+# flock target for backup.sh/upgrade.sh's concurrent-invocation guard --
+# just an empty lock handle, never has meaningful content.
+/deploy.lock

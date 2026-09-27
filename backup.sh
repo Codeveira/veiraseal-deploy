@@ -8,6 +8,19 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Guard against a concurrent backup.sh/upgrade.sh stepping on the same
+# ./data bind mount (e.g. a cron backup firing while an admin runs
+# upgrade.sh by hand). Skipped when VEIRA_DEPLOY_LOCKED is already set --
+# upgrade.sh sets it after acquiring this same lock itself, so its call
+# into backup.sh doesn't try to flock an fd it already holds.
+if [ -z "${VEIRA_DEPLOY_LOCKED:-}" ]; then
+    exec 9>"deploy.lock"
+    flock -n 9 || {
+        echo "another deploy operation (backup.sh/upgrade.sh) is already running here -- refusing to start a second one concurrently." >&2
+        exit 1
+    }
+fi
+
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p backup
 

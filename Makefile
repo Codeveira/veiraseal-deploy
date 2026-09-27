@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help check init up down restart logs ps build-image backup upgrade clean
+.PHONY: help check init up down restart logs ps build-image backup upgrade clean monitoring-up monitoring-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*## "}{printf "  %-14s %s\n", $$1, $$2}'
@@ -38,3 +38,9 @@ upgrade: ## Backup, then pull + recreate the veira container
 
 clean: ## Stop the stack and remove containers (keeps ./data and ./backup)
 	docker compose down --remove-orphans
+
+monitoring-up: ## Start the optional Prometheus + Grafana stack (needs GRAFANA_ADMIN_PASSWORD in .env, and an Extended+ licence)
+	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d prometheus grafana
+
+monitoring-down: ## Stop the monitoring stack
+	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down

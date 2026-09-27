@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  # No Bearer token needed here: /metrics is gated by licence tier
+  # (Extended+), not by an auth token, so a plain scrape config works.
+  - job_name: veira
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['veira:8200']

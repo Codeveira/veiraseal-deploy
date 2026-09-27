@@ -8,6 +8,17 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Same lock backup.sh takes on its own -- acquired once here so the whole
+# upgrade is atomic against a second upgrade.sh/backup.sh, and the sentinel
+# below tells the backup.sh call further down not to flock an fd this
+# process already holds.
+exec 9>"deploy.lock"
+flock -n 9 || {
+    echo "another deploy operation (backup.sh/upgrade.sh) is already running here -- refusing to start a second one concurrently." >&2
+    exit 1
+}
+export VEIRA_DEPLOY_LOCKED=1
+
 if [ $# -ge 1 ]; then
     tag="$1"
     if grep -q '^IMAGE_TAG=' .env 2>/dev/null; then
