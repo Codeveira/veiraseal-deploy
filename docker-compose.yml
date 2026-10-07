@@ -13,7 +13,7 @@ services:
   # never again for this data volume — re-running after init is a no-op
   # error (init refuses to overwrite an existing vault).
   veira-init:
-    image: veiraseal/veira:${IMAGE_TAG:-latest}
+    image: ghcr.io/codeveira/veiraseal:${IMAGE_TAG:-latest}
     build: ../veiraseal
     profiles: ["init"]
     environment:
@@ -24,7 +24,7 @@ services:
     command: ["server", "init", "-db", "/data/veira.db", "-keyfile", "/data/veira.key", "-admin", "admin"]
 
   veira:
-    image: veiraseal/veira:${IMAGE_TAG:-latest}
+    image: ghcr.io/codeveira/veiraseal:${IMAGE_TAG:-latest}
     build: ../veiraseal
     restart: unless-stopped
     environment:
