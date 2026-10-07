@@ -6,6 +6,15 @@ All notable changes to this deployment stack are documented here. See
 ## [Unreleased]
 
 ### Added
+- README: "Alternative master-key sealers" section — how to switch
+  `veira-init`/`veira` from the default `-keyfile` to AWS KMS, GCP KMS,
+  Azure Key Vault, PKCS#11, TPM, age or Shamir (including Shamir's
+  always-sealed-at-startup, manual-`veira unseal -share`-per-holder
+  behaviour, which has no unattended-restart story by design).
+- README: "Configuring LDAP, Kerberos, e2ee and dynamic secrets" section
+  pointing at `../veiraseal/docs/api.md` — these are post-init HTTP
+  API/CLI operations, not Compose/env-var options, so there was nothing
+  to add to `.env.example` or `docker-compose.yml` for them.
 - Initial Compose stack: `veira-init` (one-shot vault creation) + `veira`
   (long-running server), bound to `127.0.0.1:8200` by default.
 - `nginx.conf.example` for TLS termination in front of the vault.

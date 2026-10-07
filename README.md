@@ -45,6 +45,78 @@ front for real TLS and a public hostname — see
 `docker-compose.yml` if you're terminating TLS elsewhere (a load balancer,
 Cloudflare, etc).
 
+## Alternative master-key sealers
+
+The stack ships with the simplest option: a file-based master key
+(`-keyfile` / `VEIRA_KEYFILE`), created once by `veira-init` and read by
+`veira` on every start. Veira Seal also supports six other sealers — AWS
+KMS, GCP KMS, Azure Key Vault, PKCS#11 (HSM/SoftHSM), a TPM 2.0 chip, age,
+and Shamir secret-sharing (no key file at all; a quorum of printed shares
+unseals the vault) — see the main [`../veiraseal`](../veiraseal) README's
+CLI reference for the full flag list and `docs/api.md` for how each one
+behaves operationally.
+
+Switching sealers means changing **both** services, differently, because
+the image is distroless (no shell) and `veira-init`'s `command:` is a
+literal argument list while `veira`'s `server serve` is purely env-var
+driven (`CMD ["server", "serve"]` in the Dockerfile — nothing to override
+there):
+
+- `veira-init`: edit `command:` in `docker-compose.yml` (or add a
+  `docker-compose.override.yml` layering one on top), replacing
+  `-keyfile /data/veira.key` with the new sealer's flags. For example, AWS
+  KMS:
+
+  ```yaml
+  command: ["server", "init", "-db", "/data/veira.db",
+            "-kms-ciphertext-file", "/data/veira.kms",
+            "-kms-key-id", "alias/veiraseal", "-admin", "admin"]
+  ```
+
+  or Shamir (5 shares, 3 needed to unseal — printed once to the
+  `docker compose run` output, nowhere else):
+
+  ```yaml
+  command: ["server", "init", "-db", "/data/veira.db",
+            "-shamir", "-shares", "5", "-threshold", "3", "-admin", "admin"]
+  ```
+
+- `veira`: drop `VEIRA_KEYFILE` from `environment:` and set the matching
+  variable instead (`VEIRA_KMS_CIPHERTEXT_FILE` + `VEIRA_KMS_KEY_ID` for
+  the KMS example above, or `VEIRA_SHAMIR=1` for Shamir). Shamir is the one
+  exception to "starts up unsealed": there's no key material on disk at
+  all, so `veira` always comes up sealed and stays that way until each
+  share-holder separately runs `veira unseal -share -addr <url>` (one
+  invocation per share, up to the `-threshold` set at init) — there is no
+  way to automate this at container start, by design. Fine for a vault
+  you unseal by hand after every restart; plan around that before putting
+  Shamir behind `restart: unless-stopped` in production.
+
+KMS/GCP KMS/Azure Key Vault/PKCS#11/TPM each need their own credentials or
+device access (cloud IAM role, `/dev/tpmrm0` passed through with
+`devices:`, a PKCS#11 module mounted into the container, etc.) — that
+wiring is specific to your infrastructure and out of scope for this
+generic Compose file; the per-sealer flag docs in `../veiraseal`'s CLI
+reference list exactly what each one needs.
+
+## Configuring LDAP, Kerberos, e2ee and dynamic secrets
+
+A few newer capabilities are **not** container-startup options at all —
+they're configured through the HTTP API (or the `veira` CLI against a
+running server) *after* the vault is initialized and unsealed, the same
+way you'd create a user or a project:
+
+- LDAP/FreeIPA directory login and group sync — `PUT /v1/ldap`
+- Kerberos SSO — `PUT /v1/kerberos`
+- End-to-end encryption recipients — the `.../e2ee` endpoints
+- Dynamic secrets connectors (MongoDB/MySQL/Cassandra/Elasticsearch/PKI) —
+  their own `/v1/.../connectors` endpoints
+
+See `../veiraseal/docs/api.md` for the exact request/response shape of
+each. There's nothing to add to `.env` or `docker-compose.yml` for these —
+once `veira` is up, point `curl`/the CLI/Terraform provider at it like any
+other admin operation.
+
 ## Where things live
 
 ```
