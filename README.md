@@ -133,8 +133,14 @@ that takes `./data` with it also takes the key file.
 ## Updating
 
 ```sh
-make upgrade   # backs up, then pulls IMAGE_TAG from .env and recreates the container
+make deploy    # backs up, then pulls IMAGE_TAG from .env and recreates the container
 ```
+
+`make deploy` is the one command that does the whole deploy: it runs
+`upgrade.sh`, which backs up `./data`, pulls the image, recreates the
+container, and polls `docker compose ps` until it reports healthy (or
+warns after 60s if it doesn't). `make upgrade` is kept as an alias of
+`make deploy` for anything still typing that.
 
 Or pin a specific version:
 
@@ -143,7 +149,7 @@ Or pin a specific version:
 ```
 
 `upgrade.sh` refuses to pull/recreate if the backup step fails, so a bad
-upgrade never costs you your last good snapshot.
+deploy never costs you your last good snapshot.
 
 To roll back, set `IMAGE_TAG` in `.env` back to the previous tag and
 `make up` — the on-disk format is stable across patch/minor versions

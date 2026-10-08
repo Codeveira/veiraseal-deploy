@@ -6,6 +6,10 @@ All notable changes to this deployment stack are documented here. See
 ## [Unreleased]
 
 ### Added
+- `Makefile`: `deploy` target — the one command for the whole deploy
+  operation (backup, pull `IMAGE_TAG`, recreate, wait for healthy), so the
+  steps don't have to be assembled by hand or by a CI/CD job. `upgrade` is
+  kept as an alias of `deploy`.
 - README: "Alternative master-key sealers" section — how to switch
   `veira-init`/`veira` from the default `-keyfile` to AWS KMS, GCP KMS,
   Azure Key Vault, PKCS#11, TPM, age or Shamir (including Shamir's

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help check init up down restart logs ps build-image backup upgrade clean monitoring-up monitoring-down
+.PHONY: help check init up down restart logs ps build-image backup deploy upgrade clean monitoring-up monitoring-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*## "}{printf "  %-14s %s\n", $$1, $$2}'
@@ -33,8 +33,18 @@ build-image: ## Build the image from ../veiraseal instead of pulling one
 backup: ## Snapshot the vault into ./backup/
 	./backup.sh
 
-upgrade: ## Backup, then pull + recreate the veira container
+# The one target meant to be the whole deploy operation, so a human or a
+# CI/CD job never has to assemble the steps themselves: backs up ./data
+# (via backup.sh), pulls IMAGE_TAG from .env (or the tag set by
+# `./upgrade.sh <tag>` beforehand), recreates the veira container, and
+# polls `docker compose ps` until the healthcheck reports healthy (or
+# warns after 60s without one). Safe to re-run; refuses to continue if the
+# backup step fails, and refuses to start if another backup.sh/upgrade.sh
+# is already running here (deploy.lock).
+deploy: ## Deploy an update: backup, pull IMAGE_TAG, recreate, wait for healthy
 	./upgrade.sh
+
+upgrade: deploy ## Alias for `deploy` (kept for anyone/any script still typing `make upgrade`)
 
 clean: ## Stop the stack and remove containers (keeps ./data and ./backup)
 	docker compose down --remove-orphans
